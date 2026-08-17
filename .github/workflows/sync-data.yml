@@ -1,0 +1,96 @@
+name: Sync Debts Data to JSON
+
+on:
+  schedule:
+    # يشتغل تلقائياً كل 6 ساعات
+    - cron: '0 */6 * * *'
+  # يتيح لك تشغيله يدوياً بنقرة زر من تبويب Actions في GitHub
+  workflow_dispatch: 
+
+jobs:
+  fetch-and-save:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      # 1. سحب كود المستودع
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # 2. إعداد بيئة Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # 3. جلب البيانات وتقسيمها لملفات حسب الشركة والعميل
+      - name: Fetch and Process Data
+        run: |
+          node -e '
+          const fs = require("fs");
+          const path = require("path");
+
+          async function run() {
+            const API_URL = "https://nawh-ai25.vercel.app/get";
+            
+            console.log("Fetching data from:", API_URL);
+            const response = await fetch(API_URL);
+            const result = await response.json();
+
+            if (!result.success || !result.debts) {
+              console.log("No debts found or request failed:", result);
+              return;
+            }
+
+            const company = result.schemaUsed || "default_company";
+            const outputDir = path.join(process.cwd(), "data");
+
+            if (!fs.existsSync(outputDir)) {
+              fs.mkdirSync(outputDir, { recursive: true });
+            }
+
+            // تجميع البيانات بحسب اسم الشخص / العميل
+            const grouped = {};
+            for (const item of result.debts) {
+              const client = item.personName || "unknown_client";
+              if (!grouped[client]) grouped[client] = [];
+              grouped[client].push(item);
+            }
+
+            // حفظ كل عميل في ملف JSON منفصل
+            for (const [clientName, records] of Object.entries(grouped)) {
+              // تنظيف الأسماء لتكون آمنة لنظام الملفات مع دعم الحروف العربية
+              const safeCompany = company.replace(/[^a-zA-Z0-9_\u0600-\u06FF]/g, "_");
+              const safeClient = clientName.replace(/[^a-zA-Z0-9_\u0600-\u06FF]/g, "_");
+              
+              const fileName = `${safeCompany}_${safeClient}.json`;
+              const filePath = path.join(outputDir, fileName);
+
+              const fileData = {
+                company: company,
+                client: clientName,
+                updatedAt: new Date().toISOString(),
+                recordsCount: records.length,
+                debts: records
+              };
+
+              fs.writeFileSync(filePath, JSON.stringify(fileData, null, 2), "utf8");
+              console.log(`Saved: ${fileName} (${records.length} records)`);
+            }
+          }
+
+          run().catch(err => { 
+            console.error("Error executing script:", err); 
+            process.exit(1); 
+          });
+          '
+
+      # 4. حفظ وتحديث التغييرات داخل المستودع تلقائياً
+      - name: Commit and Push Changes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/
+          git diff --quiet && git diff --staged --quiet || (git commit -m "auto-sync: update debts JSON files" && git push)

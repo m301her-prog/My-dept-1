@@ -2,9 +2,9 @@ name: Sync Debts Data to JSON
 
 on:
   schedule:
-    # يشتغل تلقائياً كل 6 ساعات
+    # يعمل تلقائياً كل 6 ساعات
     - cron: '0 */6 * * *'
-  # يتيح لك تشغيله يدوياً بنقرة زر من تبويب Actions في GitHub
+  # يتيح التشغيل اليدوي بنقرة زر من GitHub
   workflow_dispatch: 
 
 jobs:
@@ -19,13 +19,13 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # 2. إعداد بيئة Node.js
+      # 2. تجهيز بيئة Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      # 3. جلب البيانات وتقسيمها لملفات حسب الشركة والعميل
+      # 3. جلب البيانات من المسار الصحيح /api/get وتقسيمها لملفات
       - name: Fetch and Process Data
         run: |
           node -e '
@@ -33,14 +33,40 @@ jobs:
           const path = require("path");
 
           async function run() {
-            const API_URL = "https://nawh-ai25.vercel.app/get";
+            // المسار الصحيح المعتمد لدى Vercel
+            const API_URL = "https://nawh-ai25.vercel.app/api/get";
             
             console.log("Fetching data from:", API_URL);
-            const response = await fetch(API_URL);
-            const result = await response.json();
+            
+            const response = await fetch(API_URL, {
+              method: "GET",
+              headers: {
+                "Accept": "application/json",
+                "Content-Type": "application/json"
+                // يمكنك إضافة x-tenant-schema أو user-id هنا إذا كنت تستهدف شركة أو مستخدماً معيناً:
+                // "x-tenant-schema": "company_name"
+              }
+            });
+
+            const rawText = await response.text();
+
+            if (!response.ok) {
+              console.error(`HTTP Error Status: ${response.status} ${response.statusText}`);
+              console.error("Response body:", rawText);
+              process.exit(1);
+            }
+
+            let result;
+            try {
+              result = JSON.parse(rawText);
+            } catch (err) {
+              console.error("Failed to parse JSON response:");
+              console.error(rawText);
+              process.exit(1);
+            }
 
             if (!result.success || !result.debts) {
-              console.log("No debts found or request failed:", result);
+              console.log("No debts returned or API reported failure:", result);
               return;
             }
 
@@ -51,7 +77,7 @@ jobs:
               fs.mkdirSync(outputDir, { recursive: true });
             }
 
-            // تجميع البيانات بحسب اسم الشخص / العميل
+            // تجميع البيانات حسب العميل
             const grouped = {};
             for (const item of result.debts) {
               const client = item.personName || "unknown_client";
@@ -59,9 +85,8 @@ jobs:
               grouped[client].push(item);
             }
 
-            // حفظ كل عميل في ملف JSON منفصل
+            // كتابة الملفات باسم الشركة والعميل
             for (const [clientName, records] of Object.entries(grouped)) {
-              // تنظيف الأسماء لتكون آمنة لنظام الملفات مع دعم الحروف العربية
               const safeCompany = company.replace(/[^a-zA-Z0-9_\u0600-\u06FF]/g, "_");
               const safeClient = clientName.replace(/[^a-zA-Z0-9_\u0600-\u06FF]/g, "_");
               
@@ -77,20 +102,20 @@ jobs:
               };
 
               fs.writeFileSync(filePath, JSON.stringify(fileData, null, 2), "utf8");
-              console.log(`Saved: ${fileName} (${records.length} records)`);
+              console.log(`Successfully saved: ${fileName} (${records.length} records)`);
             }
           }
 
           run().catch(err => { 
-            console.error("Error executing script:", err); 
+            console.error("Execution error:", err); 
             process.exit(1); 
           });
           '
 
-      # 4. حفظ وتحديث التغييرات داخل المستودع تلقائياً
+      # 4. رفع التغييرات إلى المستودع
       - name: Commit and Push Changes
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add data/
-          git diff --quiet && git diff --staged --quiet || (git commit -m "auto-sync: update debts JSON files" && git push)
+          git diff --quiet && git diff --staged --quiet || (git commit -m "auto-sync: update debts JSON files" && git push)        

@@ -1,0 +1,24 @@
+{
+  "company": "default_company",
+  "client": "Kkk",
+  "updatedAt": "2026-08-18T00:43:52.523Z",
+  "recordsCount": 1,
+  "debts": [
+    {
+      "id": "debt_mr8e2fox_ahqcb",
+      "type": "owed_to_me",
+      "personName": "Kkk",
+      "phone": "068888885",
+      "amount": 50000,
+      "currency": "DZD",
+      "dueDate": "2026-07-12T00:00:00.000Z",
+      "notes": null,
+      "status": "pending",
+      "isScheduled": true,
+      "scheduleType": "monthly",
+      "installmentsCount": 5,
+      "firstPaymentDate": "2026-07-12T00:00:00.000Z",
+      "companyName": ""
+    }
+  ]
+}

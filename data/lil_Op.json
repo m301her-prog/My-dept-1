@@ -1,0 +1,24 @@
+{
+  "company": "lil",
+  "client": "Op",
+  "updatedAt": "2026-08-18T00:43:52.521Z",
+  "recordsCount": 1,
+  "debts": [
+    {
+      "id": "debt_mswn9b85_1ogbu",
+      "type": "owed_to_me",
+      "personName": "Op",
+      "phone": null,
+      "amount": 200,
+      "currency": "DZD",
+      "dueDate": "2026-08-24T00:00:00.000Z",
+      "notes": null,
+      "status": "pending",
+      "isScheduled": false,
+      "scheduleType": null,
+      "installmentsCount": 0,
+      "firstPaymentDate": null,
+      "companyName": "lil"
+    }
+  ]
+}

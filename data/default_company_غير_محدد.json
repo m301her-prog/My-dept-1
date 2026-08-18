@@ -1,0 +1,24 @@
+{
+  "company": "default_company",
+  "client": "غير محدد",
+  "updatedAt": "2026-08-18T00:43:52.523Z",
+  "recordsCount": 1,
+  "debts": [
+    {
+      "id": "debt_mr8emhen_gqf4i",
+      "type": "owed_to_me",
+      "personName": "غير محدد",
+      "phone": null,
+      "amount": 0,
+      "currency": "DZD",
+      "dueDate": null,
+      "notes": null,
+      "status": "paid",
+      "isScheduled": false,
+      "scheduleType": null,
+      "installmentsCount": 0,
+      "firstPaymentDate": null,
+      "companyName": ""
+    }
+  ]
+}

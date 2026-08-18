@@ -1,0 +1,24 @@
+{
+  "company": "fa",
+  "client": "J",
+  "updatedAt": "2026-08-18T00:43:52.522Z",
+  "recordsCount": 1,
+  "debts": [
+    {
+      "id": "debt_msrnk1bw_9k3me",
+      "type": "owed_to_me",
+      "personName": "J",
+      "phone": "+201091288031",
+      "amount": 5000,
+      "currency": "DZD",
+      "dueDate": "2026-08-20T00:00:00.000Z",
+      "notes": null,
+      "status": "pending",
+      "isScheduled": false,
+      "scheduleType": null,
+      "installmentsCount": 0,
+      "firstPaymentDate": null,
+      "companyName": "fa"
+    }
+  ]
+}

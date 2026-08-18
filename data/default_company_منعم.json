@@ -1,0 +1,24 @@
+{
+  "company": "default_company",
+  "client": "منعم",
+  "updatedAt": "2026-08-18T00:43:52.522Z",
+  "recordsCount": 1,
+  "debts": [
+    {
+      "id": "debt_mrb6xq1y_7zhzb",
+      "type": "owed_to_me",
+      "personName": "منعم",
+      "phone": "‏‪+213 559 48 29 87‬‏",
+      "amount": 10000000,
+      "currency": "DZD",
+      "dueDate": "2027-01-10T00:00:00.000Z",
+      "notes": null,
+      "status": "pending",
+      "isScheduled": false,
+      "scheduleType": null,
+      "installmentsCount": 0,
+      "firstPaymentDate": null,
+      "companyName": ""
+    }
+  ]
+}

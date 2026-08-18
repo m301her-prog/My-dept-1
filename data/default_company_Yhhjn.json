@@ -1,0 +1,24 @@
+{
+  "company": "default_company",
+  "client": "Yhhjn",
+  "updatedAt": "2026-08-18T00:43:52.523Z",
+  "recordsCount": 1,
+  "debts": [
+    {
+      "id": "debt_mr8e6cx5_6d7o9",
+      "type": "owed_to_me",
+      "personName": "Yhhjn",
+      "phone": "05555555",
+      "amount": 5000,
+      "currency": "DZD",
+      "dueDate": "2026-07-12T00:00:00.000Z",
+      "notes": null,
+      "status": "pending",
+      "isScheduled": false,
+      "scheduleType": null,
+      "installmentsCount": 0,
+      "firstPaymentDate": null,
+      "companyName": ""
+    }
+  ]
+}

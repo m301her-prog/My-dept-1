@@ -2,13 +2,15 @@ name: Sync Debts Data to JSON
 
 on:
   schedule:
-    # يعمل تلقائياً كل 6 ساعات
     - cron: '0 */6 * * *'
-  # يتيح التشغيل اليدوي بنقرة زر مع إمكانية تحديد شركة معينة اختيارياً
   workflow_dispatch:
     inputs:
       tenant_schema:
-        description: 'اسم الشركة/السكيمّا المستهدفة (اتركه فارغاً لجلب السكيمّا الافتراضية أو كافة الشركات)'
+        description: 'اسم الشركة أو السكيمّا (مثال: company1)'
+        required: false
+        default: ''
+      user_id:
+        description: 'ID المستخدم (إذا لم يرسل اسم الشركة)'
         required: false
         default: ''
 
@@ -20,17 +22,14 @@ jobs:
       contents: write
 
     steps:
-      # 1. سحب كود المستودع
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # 2. إعداد بيئة Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      # 3. جلب البيانات وتقسيمها لملفات
       - name: Fetch and Process Data
         run: |
           node -e '
@@ -40,21 +39,33 @@ jobs:
           async function run() {
             const API_URL = "https://nawh-ai25.vercel.app/api/get";
             const inputSchema = "${{ github.event.inputs.tenant_schema }}";
+            const inputUserId = "${{ github.event.inputs.user_id }}";
+
+            // إنشاء مجلد data حتماً لتجنب خطأ Git
+            const outputDir = path.join(process.cwd(), "data");
+            if (!fs.existsSync(outputDir)) {
+              fs.mkdirSync(outputDir, { recursive: true });
+            }
+            // إنشاء ملف .gitkeep داخل المجلد لضمان وجود المسار في git
+            fs.writeFileSync(path.join(outputDir, ".gitkeep"), "", "utf8");
 
             const headers = {
               "Accept": "application/json",
               "Content-Type": "application/json"
             };
 
-            if (inputSchema) {
-              headers["x-tenant-schema"] = inputSchema;
-            }
+            if (inputSchema) headers["x-tenant-schema"] = inputSchema;
+            if (inputUserId) headers["user-id"] = inputUserId;
 
             console.log("Fetching data from:", API_URL);
             
             const response = await fetch(API_URL, {
-              method: "GET",
-              headers: headers
+              method: "POST",
+              headers: headers,
+              body: JSON.stringify({
+                companyName: inputSchema || undefined,
+                userId: inputUserId || undefined
+              })
             });
 
             const rawText = await response.text();
@@ -81,19 +92,13 @@ jobs:
             });
 
             if (!result.success || !result.debts || result.debts.length === 0) {
-              console.log("⚠️ لم يتم العثور على أي ديون في السكيمّا المستخدمة (" + (result.schemaUsed || "public") + ").");
-              console.log("نصيحة: تأكد من إرسال اسم الشركة (x-tenant-schema) أو user-id لجلب بيانات شركة محددة.");
+              console.log("⚠️ لم يتم العثور على أي ديون في السكيمّا (" + (result.schemaUsed || "public") + ").");
               return;
             }
 
             const company = result.schemaUsed || "default_company";
-            const outputDir = path.join(process.cwd(), "data");
 
-            if (!fs.existsSync(outputDir)) {
-              fs.mkdirSync(outputDir, { recursive: true });
-            }
-
-            // تجميع البيانات بحسب العميل (personName)
+            // تجميع البيانات بحسب العميل
             const grouped = {};
             for (const item of result.debts) {
               const client = item.personName || "unknown_client";
@@ -101,7 +106,7 @@ jobs:
               grouped[client].push(item);
             }
 
-            // إنشاء وتحديث الملفات بصيغة: اسم_الشركة_اسم_العميل.json
+            // كتابة الملفات باسم الشركة والعميل
             let savedFilesCount = 0;
             for (const [clientName, records] of Object.entries(grouped)) {
               const safeCompany = company.replace(/[^a-zA-Z0-9_\u0600-\u06FF]/g, "_");
@@ -132,10 +137,9 @@ jobs:
           });
           '
 
-      # 4. حفظ وحفظ التغييرات في المستودع
       - name: Commit and Push Changes
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/
+          git add -A data/
           git diff --quiet && git diff --staged --quiet || (git commit -m "auto-sync: update debts JSON files" && git push)

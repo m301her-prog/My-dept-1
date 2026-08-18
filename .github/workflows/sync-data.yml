@@ -4,8 +4,13 @@ on:
   schedule:
     # يعمل تلقائياً كل 6 ساعات
     - cron: '0 */6 * * *'
-  # يتيح التشغيل اليدوي بنقرة زر من GitHub
-  workflow_dispatch: 
+  # يتيح التشغيل اليدوي بنقرة زر مع إمكانية تحديد شركة معينة اختيارياً
+  workflow_dispatch:
+    inputs:
+      tenant_schema:
+        description: 'اسم الشركة/السكيمّا المستهدفة (اتركه فارغاً لجلب السكيمّا الافتراضية أو كافة الشركات)'
+        required: false
+        default: ''
 
 jobs:
   fetch-and-save:
@@ -19,13 +24,13 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # 2. تجهيز بيئة Node.js
+      # 2. إعداد بيئة Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      # 3. جلب البيانات من المسار الصحيح /api/get وتقسيمها لملفات
+      # 3. جلب البيانات وتقسيمها لملفات
       - name: Fetch and Process Data
         run: |
           node -e '
@@ -33,25 +38,29 @@ jobs:
           const path = require("path");
 
           async function run() {
-            // المسار الصحيح المعتمد لدى Vercel
             const API_URL = "https://nawh-ai25.vercel.app/api/get";
-            
+            const inputSchema = "${{ github.event.inputs.tenant_schema }}";
+
+            const headers = {
+              "Accept": "application/json",
+              "Content-Type": "application/json"
+            };
+
+            if (inputSchema) {
+              headers["x-tenant-schema"] = inputSchema;
+            }
+
             console.log("Fetching data from:", API_URL);
             
             const response = await fetch(API_URL, {
               method: "GET",
-              headers: {
-                "Accept": "application/json",
-                "Content-Type": "application/json"
-                // يمكنك إضافة x-tenant-schema أو user-id هنا إذا كنت تستهدف شركة أو مستخدماً معيناً:
-                // "x-tenant-schema": "company_name"
-              }
+              headers: headers
             });
 
             const rawText = await response.text();
 
             if (!response.ok) {
-              console.error(`HTTP Error Status: ${response.status} ${response.statusText}`);
+              console.error(`HTTP Error: ${response.status} ${response.statusText}`);
               console.error("Response body:", rawText);
               process.exit(1);
             }
@@ -60,13 +69,20 @@ jobs:
             try {
               result = JSON.parse(rawText);
             } catch (err) {
-              console.error("Failed to parse JSON response:");
-              console.error(rawText);
+              console.error("Failed to parse response as JSON:", rawText);
               process.exit(1);
             }
 
-            if (!result.success || !result.debts) {
-              console.log("No debts returned or API reported failure:", result);
+            console.log("API Response Summary:", {
+              success: result.success,
+              schemaUsed: result.schemaUsed,
+              debtsCount: result.debts ? result.debts.length : 0,
+              message: result.message || "OK"
+            });
+
+            if (!result.success || !result.debts || result.debts.length === 0) {
+              console.log("⚠️ لم يتم العثور على أي ديون في السكيمّا المستخدمة (" + (result.schemaUsed || "public") + ").");
+              console.log("نصيحة: تأكد من إرسال اسم الشركة (x-tenant-schema) أو user-id لجلب بيانات شركة محددة.");
               return;
             }
 
@@ -77,7 +93,7 @@ jobs:
               fs.mkdirSync(outputDir, { recursive: true });
             }
 
-            // تجميع البيانات حسب العميل
+            // تجميع البيانات بحسب العميل (personName)
             const grouped = {};
             for (const item of result.debts) {
               const client = item.personName || "unknown_client";
@@ -85,7 +101,8 @@ jobs:
               grouped[client].push(item);
             }
 
-            // كتابة الملفات باسم الشركة والعميل
+            // إنشاء وتحديث الملفات بصيغة: اسم_الشركة_اسم_العميل.json
+            let savedFilesCount = 0;
             for (const [clientName, records] of Object.entries(grouped)) {
               const safeCompany = company.replace(/[^a-zA-Z0-9_\u0600-\u06FF]/g, "_");
               const safeClient = clientName.replace(/[^a-zA-Z0-9_\u0600-\u06FF]/g, "_");
@@ -102,8 +119,11 @@ jobs:
               };
 
               fs.writeFileSync(filePath, JSON.stringify(fileData, null, 2), "utf8");
-              console.log(`Successfully saved: ${fileName} (${records.length} records)`);
+              console.log(`✅ Saved file: ${fileName} (${records.length} records)`);
+              savedFilesCount++;
             }
+
+            console.log(`\n🎉 Total created/updated files: ${savedFilesCount}`);
           }
 
           run().catch(err => { 
@@ -112,7 +132,7 @@ jobs:
           });
           '
 
-      # 4. رفع التغييرات إلى المستودع
+      # 4. حفظ وحفظ التغييرات في المستودع
       - name: Commit and Push Changes
         run: |
           git config --global user.name "github-actions[bot]"

@@ -1,24 +1,24 @@
 {
-  "company": "lil",
-  "client": "محمد ",
-  "updatedAt": "2026-08-20T01:18:25.996Z",
+  "company": "p",
+  "client": "ا",
+  "updatedAt": "2026-08-20T01:18:25.995Z",
   "recordsCount": 1,
   "debts": [
     {
-      "id": "debt_mswjzsry_7htt2",
+      "id": "debt_mt0rvrun_v6o5a",
       "type": "owed_to_me",
-      "personName": "محمد ",
+      "personName": "ا",
       "phone": null,
-      "amount": 5000,
+      "amount": 500,
       "currency": "DZD",
-      "dueDate": "2026-08-24T00:00:00.000Z",
+      "dueDate": "2026-08-27T00:00:00.000Z",
       "notes": null,
       "status": "pending",
       "isScheduled": false,
       "scheduleType": null,
       "installmentsCount": 0,
       "firstPaymentDate": null,
-      "companyName": "lil"
+      "companyName": "p"
     }
   ]
 }
